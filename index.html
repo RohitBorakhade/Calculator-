@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Scientific Calculator — Rohit</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Scientific Calculator</h1>
+      <div class="toggles">
+        <label class="switch">
+          <input id="themeToggle" type="checkbox">
+          <span class="slider"></span>
+        </label>
+        <button id="degRadBtn" class="small">DEG</button>
+      </div>
+    </header>
+
+    <section class="calc">
+      <div class="screen">
+        <div id="expr" class="expr" contenteditable="false"></div>
+        <input id="display" class="display" readonly aria-label="calculator display" />
+      </div>
+
+      <div class="controls">
+        <div class="left">
+          <div class="row">
+            <button class="btn fn" data-fn="(">(</button>
+            <button class="btn fn" data-fn=")">)</button>
+            <button class="btn fn" data-fn="back">⌫</button>
+            <button class="btn fn" data-fn="C">C</button>
+          </div>
+
+          <div class="row">
+            <button class="btn fn" data-fn="sin">sin</button>
+            <button class="btn fn" data-fn="cos">cos</button>
+            <button class="btn fn" data-fn="tan">tan</button>
+            <button class="btn fn" data-fn="^">^</button>
+          </div>
+
+          <div class="row">
+            <button class="btn fn" data-fn="asin">asin</button>
+            <button class="btn fn" data-fn="acos">acos</button>
+            <button class="btn fn" data-fn="atan">atan</button>
+            <button class="btn fn" data-fn="sqrt">√</button>
+          </div>
+
+          <div class="row">
+            <button class="btn fn" data-fn="ln">ln</button>
+            <button class="btn fn" data-fn="log">log</button>
+            <button class="btn fn" data-fn="exp">eˣ</button>
+            <button class="btn fn" data-fn="!">x!</button>
+          </div>
+
+          <div class="row">
+            <button class="btn fn" data-fn="MC">MC</button>
+            <button class="btn fn" data-fn="MR">MR</button>
+            <button class="btn fn" data-fn="M+">M+</button>
+            <button class="btn fn" data-fn="M-">M-</button>
+          </div>
+
+        </div>
+
+        <div class="right">
+          <div class="row">
+            <button class="btn num" data-num="7">7</button>
+            <button class="btn num" data-num="8">8</button>
+            <button class="btn num" data-num="9">9</button>
+            <button class="btn op" data-op="/">÷</button>
+          </div>
+
+          <div class="row">
+            <button class="btn num" data-num="4">4</button>
+            <button class="btn num" data-num="5">5</button>
+            <button class="btn num" data-num="6">6</button>
+            <button class="btn op" data-op="*">×</button>
+          </div>
+
+          <div class="row">
+            <button class="btn num" data-num="1">1</button>
+            <button class="btn num" data-num="2">2</button>
+            <button class="btn num" data-num="3">3</button>
+            <button class="btn op" data-op="-">−</button>
+          </div>
+
+          <div class="row">
+            <button class="btn num" data-num="0">0</button>
+            <button class="btn num" data-num=".">.</button>
+            <button id="equals" class="btn equals">=</button>
+            <button class="btn op" data-op="+">+</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="section history">
+          <h3>History</h3>
+          <ul id="historyList"></ul>
+        </div>
+        <div class="section constants">
+          <h3>Constants</h3>
+          <div class="const-row">
+            <button class="btn const" data-const="pi">π</button>
+            <button class="btn const" data-const="e">e</button>
+            <button class="btn const" data-const="%">%</button>
+          </div>
+        </div>
+      </aside>
+
+    </section>
+
+    <footer>
+      <small>Tip: use keyboard — numbers, + - * /, Enter = evaluate, Backspace = delete.</small>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
