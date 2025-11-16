@@ -1,25 +1,25 @@
-/* Scientific calculator logic
-   - Safe-ish expression evaluation using a sandbox scope object and Function + with(scope)
-   - Supports factorial (!) via replacement
-   - Degree/Radian toggle
-   - Memory operations and history
+/* Full-featured scientific calculator script
+   - evaluateExpression uses a scoped Function with a safe-ish scope object
+   - supports factorial, percent, ^ operator, DEG/RAD toggle
+   - memory and history
 */
 
 (() => {
-  // UI elements
+  // Elements
   const display = document.getElementById('display');
   const exprEl = document.getElementById('expr');
   const historyList = document.getElementById('historyList');
   const degRadBtn = document.getElementById('degRadBtn');
   const themeToggle = document.getElementById('themeToggle');
+  const equalsBtn = document.getElementById('equals');
 
   let currentExp = '';
   let lastResult = '';
-  let degMode = true; // default degrees
+  let degMode = true;
   let memory = 0;
   let history = [];
 
-  // helpers
+  // UI update
   function updateScreen(){
     exprEl.textContent = currentExp;
     display.value = lastResult || '';
@@ -27,7 +27,7 @@
 
   function pushHistory(expression, result){
     history.unshift({expression, result});
-    if(history.length > 20) history.pop();
+    if(history.length > 30) history.pop();
     renderHistory();
   }
 
@@ -45,155 +45,153 @@
     });
   }
 
-  // factorial implementation
+  // Factorial for integers
   function factorial(n){
     n = Number(n);
     if(!isFinite(n) || n < 0) throw 'Invalid factorial';
-    if(Math.floor(n) !== n) { // gamma approx for non-integers? keep simple
-      // use gamma approximation for non-integers if needed (optional)
-      throw 'Factorial only supports non-negative integers';
-    }
+    if(Math.floor(n) !== n) throw 'Factorial supports non-negative integers';
     let res = 1;
     for(let i=2;i<=n;i++) res *= i;
     return res;
   }
 
-  // evaluation sandbox
+  // rounding helper
+  function roundIfNeeded(n){
+    if(typeof n !== 'number' || !isFinite(n)) return n;
+    if(Math.abs(n) < 1e-12) return 0;
+    return Math.round((n + Number.EPSILON) * 1e12) / 1e12;
+  }
+
+  // Evaluate expression with scoped math
   function evaluateExpression(str){
     if(!str) return '';
-    // normalize symbols
-    str = str.replace(/×/g, '*').replace(/÷/g, '/').replace(/–/g,'-');
-    // replace percent (n% -> (n/100))
+    // normalize
+    str = String(str).replace(/×/g, '*').replace(/÷/g, '/').replace(/–/g,'-').trim();
+
+    // replace percentage: 50% -> (50/100)
     str = str.replace(/(\d+(\.\d+)?)%/g, '($1/100)');
-    // replace factorial (e.g. 5! -> factorial(5))
+
+    // factorial: 5! -> factorial(5)
     str = str.replace(/(\d+(\.\d+)?)!/g, 'factorial($1)');
 
     // allow ^ as power
     str = str.replace(/\^/g, '**');
 
-    // allow shorthand for constants
+    // constants
     str = str.replace(/\bpi\b/gi, 'PI');
-    str = str.replace(/\be\b/gi, 'E');
+    str = str.replace(/\be\b(?![a-z])/gi, 'E');
 
-    // create scope
+    // scope
     const scope = {
-      // constants
       PI: Math.PI,
       E: Math.E,
-      // math alias
-      abs: Math.abs, pow: Math.pow, sqrt: Math.sqrt, round: Math.round,
-      floor: Math.floor, ceil: Math.ceil, max: Math.max, min: Math.min,
-      log: Math.log10, ln: Math.log, exp: Math.exp,
-      // factorial
+      abs: Math.abs,
+      pow: Math.pow,
+      sqrt: Math.sqrt,
+      round: Math.round,
+      floor: Math.floor,
+      ceil: Math.ceil,
+      max: Math.max,
+      min: Math.min,
+      log: (x) => Math.log10(x),
+      ln: (x) => Math.log(x),
+      exp: (x) => Math.exp(x),
       factorial: factorial,
-      // trig wrappers that honor degMode
       sin: (x) => degMode ? Math.sin(x * Math.PI/180) : Math.sin(x),
       cos: (x) => degMode ? Math.cos(x * Math.PI/180) : Math.cos(x),
       tan: (x) => degMode ? Math.tan(x * Math.PI/180) : Math.tan(x),
       asin: (x) => (degMode ? Math.asin(x) * 180/Math.PI : Math.asin(x)),
       acos: (x) => (degMode ? Math.acos(x) * 180/Math.PI : Math.acos(x)),
-      atan: (x) => (degMode ? Math.atan(x) * 180/Math.PI : Math.atan(x)),
-      // utility
-      PI2: Math.PI*2
+      atan: (x) => (degMode ? Math.atan(x) * 180/Math.PI : Math.atan(x))
     };
 
-    // sanitize: basic check to reduce injection — allow digits, operators, parentheses, letters for function names and dots
-    // (This is not bulletproof—code runs client-side. Do not evaluate untrusted input server-side.)
-    if(/[^0-9+\-*/^().,%!eEpiPIa-zA-Z _]/.test(str)) {
-      // allow ** operator too
-      // any other symbol reject
-      // but keep it lenient to not block valid expressions
+    // basic sanitization: allow letters (for function names), digits, operators, parentheses, dot, whitespace
+    // (client-side only — do not eval untrusted server-side)
+    if(/[^0-9+\-*/^().,%!eEpiPIa-zA-Z _]/.test(str)){
+      // keep lenient but you can reject here if necessary
     }
 
-    // evaluate using with(scope)
     try {
-      const func = new Function('scope', `with(scope){ return ${str}; }`);
-      const result = func(scope);
-      if(typeof result === 'number' && !isFinite(result)) throw 'Result not finite';
+      const fn = new Function('scope', `with(scope){ return ${str}; }`);
+      const result = fn(scope);
+      if(typeof result === 'number') return roundIfNeeded(result);
       return result;
     } catch (err){
       throw err;
     }
   }
 
-  // button handlers
-  document.querySelectorAll('.num').forEach(b => b.addEventListener('click', () => {
-    currentExp += b.dataset.num;
+  // Button wiring
+  document.querySelectorAll('.btn.num').forEach(b => b.addEventListener('click', () => {
+    const v = b.dataset.num ?? b.textContent;
+    currentExp += v;
     updateScreen();
   }));
-  document.querySelectorAll('.op').forEach(b => b.addEventListener('click', () => {
-    currentExp += ` ${b.dataset.op} `;
+
+  document.querySelectorAll('.btn.op').forEach(b => b.addEventListener('click', () => {
+    if(b.dataset.op) currentExp += ` ${b.dataset.op} `;
+    else currentExp += b.getAttribute('data-action') || b.textContent;
     updateScreen();
   }));
-  document.querySelectorAll('.fn').forEach(b => b.addEventListener('click', () => {
-    const f = b.dataset.fn;
-    if(f === 'back'){
-      currentExp = currentExp.slice(0, -1);
-    } else if(f === 'C'){
-      currentExp = '';
-      lastResult = '';
-    } else if(f === 'MC'){
-      memory = 0;
-    } else if(f === 'MR'){
-      currentExp += String(memory);
-    } else if(f === 'M+'){
-      try{
-        const r = evaluateExpression(currentExp || lastResult);
-        if(typeof r === 'number') memory += r;
-      }catch(e){}
-    } else if(f === 'M-'){
-      try{
-        const r = evaluateExpression(currentExp || lastResult);
-        if(typeof r === 'number') memory -= r;
-      }catch(e){}
-    } else if(f === 'pi'){
-      currentExp += 'PI';
-    } else if(f === '!'){
-      currentExp += '!';
-    } else {
-      // functions like sin,cos,ln,log,asin,acos,atan,sqrt,exp,^,(,)
-      if(['sin','cos','tan','asin','acos','atan','ln','log','exp','sqrt','^','(',')'].includes(f)){
-        if(f === 'ln') currentExp += ' ln(';
-        else if(f === 'log') currentExp += ' log(';
-        else if(f === 'exp') currentExp += ' exp(';
-        else if(f === 'sqrt') currentExp += ' sqrt(';
-        else if(f === '^') currentExp += '^';
-        else currentExp += f + '(';
-      } else {
-        currentExp += f;
-      }
+
+  document.querySelectorAll('.btn.func').forEach(b => b.addEventListener('click', () => {
+    const fn = b.dataset.fn ?? b.textContent;
+    if(fn === '!') currentExp += '!';
+    else if(fn === 'sqrt') currentExp += ' sqrt(';
+    else if(fn === 'exp') currentExp += ' exp(';
+    else if(fn === 'ln') currentExp += ' ln(';
+    else if(fn === 'log') currentExp += ' log(';
+    else currentExp += fn + '(';
+    updateScreen();
+  }));
+
+  // memory
+  document.querySelectorAll('.btn.mem').forEach(b => b.addEventListener('click', () => {
+    const op = b.dataset.mem;
+    if(op === 'MC') memory = 0;
+    else if(op === 'MR') { currentExp += String(memory); }
+    else if(op === 'M+') {
+      try { const r = evaluateExpression(currentExp || lastResult); if(typeof r === 'number') memory += r; } catch(e){}
+    }
+    else if(op === 'M-') {
+      try { const r = evaluateExpression(currentExp || lastResult); if(typeof r === 'number') memory -= r; } catch(e){}
     }
     updateScreen();
   }));
 
-  document.querySelectorAll('.const').forEach(b => {
-    b.addEventListener('click', () => {
-      const c = b.dataset.const;
-      if(c === 'pi') currentExp += 'PI';
-      else if(c === 'e') currentExp += 'E';
-      else if(c === '%') currentExp += '%';
-      updateScreen();
-    });
-  });
+  // consts
+  document.querySelectorAll('.btn.const').forEach(b => b.addEventListener('click', () => {
+    const c = b.dataset.const;
+    if(c === 'pi') currentExp += 'PI';
+    else if(c === 'e') currentExp += 'E';
+    else if(c === '%') currentExp += '%';
+    updateScreen();
+  }));
 
-  document.getElementById('equals').addEventListener('click', computeResult);
+  // clear & delete
+  document.querySelectorAll('.btn.clear').forEach(b => b.addEventListener('click', () => {
+    currentExp = '';
+    lastResult = '';
+    updateScreen();
+  }));
+  document.querySelectorAll('.btn.del').forEach(b => b.addEventListener('click', () => {
+    currentExp = currentExp.slice(0, -1);
+    updateScreen();
+  }));
+
+  // equals
+  equalsBtn.addEventListener('click', computeResult);
 
   function computeResult(){
     try {
-      const result = evaluateExpression(currentExp);
-      lastResult = result === undefined ? '' : String(Number.isFinite(result) ? roundIfNeeded(result) : result);
+      const res = evaluateExpression(currentExp);
+      lastResult = (res === undefined) ? '' : String(res);
       pushHistory(currentExp, lastResult);
       currentExp = String(lastResult);
     } catch (err){
       lastResult = 'Error';
     }
     updateScreen();
-  }
-
-  function roundIfNeeded(n){
-    // avoid long float tails
-    if(Math.abs(n) < 1e-12) return 0;
-    return Math.round((n + Number.EPSILON) * 1e12) / 1e12;
   }
 
   // deg/rad toggle
@@ -210,10 +208,10 @@
     else if(e.key === 'Enter') { computeResult(); }
     else if(e.key === 'Backspace') { currentExp = currentExp.slice(0, -1); updateScreen(); }
     else if(e.key === '%') { currentExp += '%'; updateScreen(); }
-    // allow keyboard triggers for functions: s->sin, c->cos, t->tan (basic)
     else if(e.key === 's') { currentExp += 'sin('; updateScreen(); }
     else if(e.key === 'c') { currentExp += 'cos('; updateScreen(); }
     else if(e.key === 't') { currentExp += 'tan('; updateScreen(); }
+    // allow Shift+6 for ^ maybe, but users can press ^ on keyboards
   });
 
   // theme toggle
@@ -221,6 +219,6 @@
     document.body.classList.toggle('dark', themeToggle.checked);
   });
 
-  // initial render
+  // initial
   updateScreen();
 })();
